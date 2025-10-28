@@ -1,3 +1,35 @@
+// Configuration
+const CONFIG = {
+    contactEmail: 'seuemail@exemplo.com',
+    messages: {
+        success: 'Mensagem enviada com sucesso! Redirecionando para seu cliente de email...',
+        error: 'Por favor, preencha todos os campos!'
+    }
+};
+
+// Utility function for throttling scroll events
+function throttle(func, wait) {
+    let timeout;
+    let lastRan;
+    
+    return function executedFunction(...args) {
+        const context = this;
+        
+        if (!lastRan) {
+            func.apply(context, args);
+            lastRan = Date.now();
+        } else {
+            clearTimeout(timeout);
+            timeout = setTimeout(function() {
+                if ((Date.now() - lastRan) >= wait) {
+                    func.apply(context, args);
+                    lastRan = Date.now();
+                }
+            }, wait - (Date.now() - lastRan));
+        }
+    };
+}
+
 // Wait for DOM to be fully loaded
 document.addEventListener('DOMContentLoaded', function() {
     // Mobile Navigation Toggle
@@ -52,7 +84,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Active navigation link on scroll
     const sections = document.querySelectorAll('section');
     
-    window.addEventListener('scroll', function() {
+    // Consolidated scroll handler with throttling
+    const handleScroll = throttle(function() {
+        // Update active nav link
         let current = '';
         
         sections.forEach(section => {
@@ -70,12 +104,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 link.classList.add('active');
             }
         });
-    });
-
-    // Navbar background on scroll
-    const navbar = document.getElementById('navbar');
-    
-    window.addEventListener('scroll', function() {
+        
+        // Update navbar background
         if (window.scrollY > 50) {
             navbar.style.backgroundColor = 'rgba(15, 15, 15, 0.98)';
             navbar.style.boxShadow = '0 2px 20px rgba(0, 0, 0, 0.5)';
@@ -83,18 +113,32 @@ document.addEventListener('DOMContentLoaded', function() {
             navbar.style.backgroundColor = 'rgba(15, 15, 15, 0.95)';
             navbar.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.5)';
         }
-    });
-
-    // Back to top button
-    const backToTopBtn = document.getElementById('backToTop');
-    
-    window.addEventListener('scroll', function() {
+        
+        // Update back to top button
         if (window.scrollY > 300) {
             backToTopBtn.classList.add('visible');
         } else {
             backToTopBtn.classList.remove('visible');
         }
-    });
+        
+        // Animate skills when in view
+        animateSkills();
+        
+        // Parallax effect for hero
+        const scrolled = window.pageYOffset;
+        const hero = document.querySelector('.hero');
+        if (hero) {
+            hero.style.transform = `translateY(${scrolled * 0.5}px)`;
+        }
+    }, 100);
+    
+    window.addEventListener('scroll', handleScroll);
+
+    // Get references
+    const navbar = document.getElementById('navbar');
+    const backToTopBtn = document.getElementById('backToTop');
+    
+    // Back to top button
     
     backToTopBtn.addEventListener('click', function() {
         window.scrollTo({
@@ -109,23 +153,24 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function animateSkills() {
         const skillsSection = document.getElementById('skills');
+        if (!skillsSection) return;
+        
         const skillsSectionTop = skillsSection.offsetTop;
         const skillsSectionHeight = skillsSection.clientHeight;
         const windowHeight = window.innerHeight;
         
         if (window.scrollY > skillsSectionTop - windowHeight + 100 && !skillsAnimated) {
             skillBars.forEach(bar => {
-                const width = bar.style.width;
+                // Get the target width from inline style
+                const targetWidth = bar.style.width || bar.getAttribute('data-width') || '0%';
                 bar.style.width = '0';
                 setTimeout(() => {
-                    bar.style.width = width;
+                    bar.style.width = targetWidth;
                 }, 100);
             });
             skillsAnimated = true;
         }
     }
-    
-    window.addEventListener('scroll', animateSkills);
 
     // Contact form submission
     const contactForm = document.getElementById('contactForm');
@@ -142,10 +187,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // Simple validation
         if (name && email && subject && message) {
             // Create mailto link (since this is a static site)
-            const mailtoLink = `mailto:seuemail@exemplo.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(`Nome: ${name}\nEmail: ${email}\n\nMensagem:\n${message}`)}`;
+            const mailtoLink = `mailto:${CONFIG.contactEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(`Nome: ${name}\nEmail: ${email}\n\nMensagem:\n${message}`)}`;
             
             // Show success message
-            showNotification('Mensagem enviada com sucesso! Redirecionando para seu cliente de email...', 'success');
+            showNotification(CONFIG.messages.success, 'success');
             
             // Open mail client after a short delay
             setTimeout(() => {
@@ -155,7 +200,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Reset form
             contactForm.reset();
         } else {
-            showNotification('Por favor, preencha todos os campos!', 'error');
+            showNotification(CONFIG.messages.error, 'error');
         }
     });
 
@@ -272,15 +317,6 @@ document.addEventListener('DOMContentLoaded', function() {
         // Start typing effect after a short delay
         setTimeout(typeWriter, 500);
     }
-
-    // Parallax effect for hero section
-    window.addEventListener('scroll', function() {
-        const scrolled = window.pageYOffset;
-        const hero = document.querySelector('.hero');
-        if (hero) {
-            hero.style.transform = `translateY(${scrolled * 0.5}px)`;
-        }
-    });
 
     // Log page load
     console.log('%cPortfólio carregado com sucesso! 🚀', 'color: #ff6b35; font-size: 20px; font-weight: bold;');
