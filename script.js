@@ -1,11 +1,14 @@
 // Configuration
 const CONFIG = {
-    contactEmail: 'seuemail@exemplo.com',
+    contactEmail: 'lu12345pe@gmail.com',
     messages: {
-        success: 'Mensagem enviada com sucesso! Redirecionando para seu cliente de email...',
+        success: 'Mensagem enviada com sucesso! Obrigado — vou responder em breve.',
         error: 'Por favor, preencha todos os campos!'
     }
 };
+
+
+const FORMSPREE_ENDPOINT = 'https://formspree.io/f/mnnwvggv';
 
 // Utility function for throttling scroll events
 function throttle(func, wait) {
@@ -123,13 +126,6 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Animate skills when in view
         animateSkills();
-        
-        // Parallax effect for hero
-        const scrolled = window.pageYOffset;
-        const hero = document.querySelector('.hero');
-        if (hero) {
-            hero.style.transform = `translateY(${scrolled * 0.5}px)`;
-        }
     }, 100);
     
     window.addEventListener('scroll', handleScroll);
@@ -177,31 +173,60 @@ document.addEventListener('DOMContentLoaded', function() {
     
     contactForm.addEventListener('submit', function(e) {
         e.preventDefault();
-        
+
         // Get form values
-        const name = document.getElementById('name').value;
-        const email = document.getElementById('email').value;
-        const subject = document.getElementById('subject').value;
-        const message = document.getElementById('message').value;
-        
+        const name = document.getElementById('name').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const subject = document.getElementById('subject').value.trim();
+        const message = document.getElementById('message').value.trim();
+
         // Simple validation
-        if (name && email && subject && message) {
-            // Create mailto link (since this is a static site)
-            const mailtoLink = `mailto:${CONFIG.contactEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(`Nome: ${name}\nEmail: ${email}\n\nMensagem:\n${message}`)}`;
-            
-            // Show success message
-            showNotification(CONFIG.messages.success, 'success');
-            
-            // Open mail client after a short delay
-            setTimeout(() => {
-                window.location.href = mailtoLink;
-            }, 1500);
-            
-            // Reset form
-            contactForm.reset();
-        } else {
+        if (!name || !email || !subject || !message) {
             showNotification(CONFIG.messages.error, 'error');
+            return;
         }
+
+        // If user hasn't set the Formspree endpoint, fallback to mailto (useful for local testing)
+        if (!FORMSPREE_ENDPOINT || FORMSPREE_ENDPOINT.includes('YOUR_FORM_ID')) {
+            const mailtoLink = `mailto:${CONFIG.contactEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(`Nome: ${name}\nEmail: ${email}\n\nMensagem:\n${message}`)}`;
+            showNotification(CONFIG.messages.success, 'success');
+            setTimeout(() => { window.location.href = mailtoLink; }, 1500);
+            contactForm.reset();
+            return;
+        }
+
+        // Send data to Formspree
+        const payload = { name, email, subject, message };
+        const submitButton = contactForm.querySelector('button[type="submit"]');
+        if (submitButton) submitButton.disabled = true;
+
+        fetch(FORMSPREE_ENDPOINT, {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(async response => {
+            if (response.ok) {
+                showNotification(CONFIG.messages.success, 'success');
+                contactForm.reset();
+            } else {
+                let errorMsg = 'Erro ao enviar a mensagem. Tente novamente.';
+                try {
+                    const data = await response.json();
+                    if (data && data.error) errorMsg = data.error;
+                } catch (err) {}
+                showNotification(errorMsg, 'error');
+            }
+        })
+        .catch(err => {
+            showNotification('Erro de rede. Verifique sua conexão e tente novamente.', 'error');
+        })
+        .finally(() => {
+            if (submitButton) submitButton.disabled = false;
+        });
     });
 
     // Notification function
@@ -318,7 +343,11 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(typeWriter, 500);
     }
 
-    // Log page load
-    console.log('%cPortfólio carregado com sucesso! 🚀', 'color: #ff6b35; font-size: 20px; font-weight: bold;');
-    console.log('%cDesenvolvido com ❤️ e muito café', 'color: #ff9f1c; font-size: 14px;');
+
+    // Set the copyright year dynamically
+    const yearSpan = document.getElementById('currentYear');
+    if (yearSpan) {
+        const now = new Date();
+        yearSpan.textContent = now.getFullYear();
+    }
 });
